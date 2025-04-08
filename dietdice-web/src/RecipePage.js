@@ -1,45 +1,21 @@
-import { useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, X, Trash2, Edit } from 'lucide-react';
+import { 
+    getAllRecipes, 
+    addRecipe as addRecipeToDB, 
+    updateRecipe as updateRecipeInDB,
+    deleteRecipe as deleteRecipeFromDB 
+  } from '../src/services/recipe-service';
 
-// Sample initial recipe data
-const initialRecipes = [
-  {
-    id: 1,
-    name: '清蒸鲈鱼',
-    tag: '粤菜',
-    carbs: 5,
-    protein: 22,
-    fat: 3,
-    steps: '1. 鲈鱼洗净，在鱼身上划几刀\n2. 放入姜丝和葱段\n3. 蒸锅中蒸8-10分钟\n4. 取出后淋上酱油和热油',
-    image: '/api/placeholder/400/250'
-  },
-  {
-    id: 2,
-    name: '西兰花炒牛肉',
-    tag: '家常菜',
-    carbs: 12,
-    protein: 18,
-    fat: 8,
-    steps: '1. 牛肉切片，用料酒和淀粉腌制\n2. 西兰花切小朵，焯水\n3. 热锅热油，爆香蒜末\n4. 放入牛肉快速翻炒\n5. 加入西兰花，翻炒均匀',
-    image: '/api/placeholder/400/250'
-  },
-  {
-    id: 3,
-    name: '番茄鸡蛋面',
-    tag: '面食',
-    carbs: 45,
-    protein: 15,
-    fat: 7,
-    steps: '1. 番茄切块，鸡蛋打散\n2. 热锅倒油，炒散鸡蛋\n3. 放入番茄翻炒出汁\n4. 加水煮沸后放入面条\n5. 面条煮熟后调味即可',
-    image: '/api/placeholder/400/250'
-  }
-];
 
 export default function RecipePage() {
-  const [recipes, setRecipes] = useState(initialRecipes);
+  const [recipes, setRecipes] = useState([]);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isAddingRecipe, setIsAddingRecipe] = useState(false);
+  const [isEditingRecipe, setIsEditingRecipe] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [newRecipe, setNewRecipe] = useState({
     name: '',
     tag: '',
@@ -50,10 +26,29 @@ export default function RecipePage() {
     image: '/api/placeholder/400/250'
   });
 
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      try {
+        setIsLoading(true);
+        const recipesData = await getAllRecipes();
+        setRecipes(recipesData);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch recipes:", err);
+        setError("加载食谱失败，请稍后再试");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecipes();
+  }, []);
+
   const closeModal = () => {
     setShowModal(false);
     setSelectedRecipe(null);
     setIsAddingRecipe(false);
+    setIsEditingRecipe(false);
     setNewRecipe({
       name: '',
       tag: '',
@@ -67,7 +62,36 @@ export default function RecipePage() {
 
   const handleAddRecipe = () => {
     setIsAddingRecipe(true);
+    setIsEditingRecipe(false);
     setShowModal(true);
+  };
+
+  // 处理编辑食谱
+  const handleEditRecipe = (recipe) => {
+    setNewRecipe(recipe);
+    setIsEditingRecipe(true);
+    setIsAddingRecipe(false);
+    setShowModal(true);
+    // 阻止事件冒泡，避免触发食谱详情
+    // event.stopPropagation();
+  };
+
+  // 处理删除食谱
+  const handleDeleteRecipe = async (id) => {
+    if (window.confirm("确定要删除这个食谱吗？")) {
+      try {
+        await deleteRecipeFromDB(id);
+        setRecipes(recipes.filter(recipe => recipe.id !== id));
+        if (selectedRecipe && selectedRecipe.id === id) {
+          closeModal();
+        }
+      } catch (err) {
+        console.error("Failed to delete recipe:", err);
+        alert("删除食谱失败，请稍后再试");
+      }
+    }
+    // 阻止事件冒泡，避免触发食谱详情
+    // event.stopPropagation();
   };
 
   const handleInputChange = (e) => {
@@ -78,13 +102,32 @@ export default function RecipePage() {
     });
   };
 
-  const handleSaveRecipe = () => {
-    const recipeToAdd = {
-      ...newRecipe,
-      id: recipes.length > 0 ? Math.max(...recipes.map(r => r.id)) + 1 : 1
-    };
-    setRecipes([...recipes, recipeToAdd]);
-    closeModal();
+
+  // 保存食谱（添加或更新）
+  const handleSaveRecipe = async () => {
+    try {
+      if (isEditingRecipe) {
+        // 更新现有食谱
+        const updatedRecipe = await updateRecipeInDB(newRecipe.id, newRecipe);
+        setRecipes(recipes.map(r => r.id === updatedRecipe.id ? updatedRecipe : r));
+      } else {
+        // 添加新食谱
+        const addedRecipe = await addRecipeToDB(newRecipe);
+        setRecipes([...recipes, addedRecipe]);
+      }
+      closeModal();
+    } catch (err) {
+      console.error("Failed to save recipe:", err);
+      alert("保存食谱失败，请稍后再试");
+    }
+  };
+
+  // 查看食谱详情
+  const viewRecipeDetails = (recipe) => {
+    setSelectedRecipe(recipe);
+    setIsAddingRecipe(false);
+    setIsEditingRecipe(false);
+    setShowModal(true);
   };
 
   return (
@@ -109,14 +152,50 @@ export default function RecipePage() {
           </button>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="text-center py-10">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-green-500 border-t-transparent"></div>
+            <p className="mt-2 text-green-800">加载中...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <p>{error}</p>
+            <button 
+              className="underline mt-2"
+              onClick={() => window.location.reload()}
+            >
+              重试
+            </button>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && !error && recipes.length === 0 && (
+          <div className="text-center py-10">
+            <p className="text-gray-600 mb-4">您还没有添加任何食谱</p>
+            <button
+              onClick={handleAddRecipe}
+              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full inline-flex items-center"
+            >
+              <Plus className="mr-1" size={20} />
+              添加第一个食谱
+            </button>
+          </div>
+        )}
+
+
         {/* Recipe Grid */}
+        {!isLoading && !error && recipes.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {recipes.map((recipe) => (
             <div
               key={recipe.id}
               onClick={() => {
-                setSelectedRecipe(recipe);
-                setShowModal(true);
+                viewRecipeDetails(recipe)
               }}
               className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg cursor-pointer transition-shadow duration-300"
             >
@@ -133,9 +212,25 @@ export default function RecipePage() {
                   {recipe.tag}
                 </span>
               </div>
+              {/* Action Buttons */}
+              <div className="absolute top-2 right-2 flex space-x-1">
+                  <button 
+                    onClick={(e) => handleEditRecipe(recipe)}
+                    className="bg-white p-1 rounded-full shadow-md hover:bg-gray-100"
+                  >
+                    <Edit size={16} className="text-green-600" />
+                  </button>
+                  <button 
+                    onClick={(e) => handleDeleteRecipe(recipe.id)}
+                    className="bg-white p-1 rounded-full shadow-md hover:bg-gray-100"
+                  >
+                    <Trash2 size={16} className="text-red-500" />
+                  </button>
+                </div>
             </div>
           ))}
         </div>
+        )}
 
         {/* Big Add Button for Mobile */}
         <div className="fixed bottom-8 right-8 md:hidden">
@@ -154,7 +249,9 @@ export default function RecipePage() {
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-90vh overflow-y-auto">
             <div className="flex justify-between items-center border-b border-gray-200 px-6 py-4">
               <h3 className="text-xl font-semibold text-green-800">
-                {isAddingRecipe ? "添加新食谱" : selectedRecipe.name}
+                {isAddingRecipe ? "添加新食谱" : 
+                isEditingRecipe ? "编辑菜谱" :
+                selectedRecipe.name}
               </h3>
               <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
                 <X size={24} />
@@ -162,7 +259,7 @@ export default function RecipePage() {
             </div>
             
             <div className="p-6">
-              {isAddingRecipe ? (
+              {(isAddingRecipe || isEditingRecipe)? (
                 // Add Recipe Form
                 <form onSubmit={(e) => { e.preventDefault(); handleSaveRecipe(); }}>
                   <div className="mb-4">
@@ -258,7 +355,7 @@ export default function RecipePage() {
                       type="submit"
                       className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-300"
                     >
-                      保存
+                      {isEditingRecipe ? "更新" : "保存"}
                     </button>
                   </div>
                 </form>
@@ -277,6 +374,22 @@ export default function RecipePage() {
                     <span className="inline-block bg-green-100 text-green-600 rounded-full px-3 py-1 text-sm font-semibold">
                       {selectedRecipe.tag}
                     </span>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEditRecipe(selectedRecipe)}
+                        className="flex items-center text-green-600 hover:text-green-800"
+                      >
+                        <Edit size={16} className="mr-1" />
+                        编辑
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRecipe(selectedRecipe.id)}
+                        className="flex items-center text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 size={16} className="mr-1" />
+                        删除
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-4 mb-6">

@@ -13,6 +13,7 @@
 
 # misc
 .DS_Store
+.env
 .env.local
 .env.development.local
 .env.test.local
@@ -21,3 +22,35 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# AWS and DynamoDB Local
+.aws/
+*.pem
+*.key
+*.crt
+
+# DynamoDB Local files (if using local dev)
+.dynamodb/
+*.db
+*.sqlite
+*.lock
+
+# IDE / editor settings
+.vscode/
+.idea/
+*.swp
+
+# macOS system files
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Logs
+logs/
+*.log
+
+# Optional: TypeScript build output (if applicable)
+dist/
+*.tsbuildinfo
+

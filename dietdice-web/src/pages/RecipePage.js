@@ -5,7 +5,7 @@ import {
     addRecipe as addRecipeToDB, 
     updateRecipe as updateRecipeInDB,
     deleteRecipe as deleteRecipeFromDB 
-  } from '../src/services/recipe-service';
+  } from '../services/recipe-service';
 
 
 export default function RecipePage() {
@@ -132,12 +132,6 @@ export default function RecipePage() {
 
   return (
     <div className="min-h-screen bg-green-50">
-      {/* Header */}
-      <header className="bg-green-600 text-white shadow-md">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-3xl font-bold">DietDice</h1>
-        </div>
-      </header>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">

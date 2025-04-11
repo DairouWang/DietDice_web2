@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dice5 } from 'lucide-react';
-import { getAllRecipes } from '../src/services/recipe-service';
+import { getAllRecipes } from '../services/recipe-service';
 
 export default function DicePage() {
   const [recipes, setRecipes] = useState([]);
@@ -146,13 +146,6 @@ export default function DicePage() {
 
   return (
     <div className="min-h-screen bg-green-50">
-      {/* Header */}
-      <header className="bg-green-600 text-white shadow-md">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-3xl font-bold">DietDice</h1>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">

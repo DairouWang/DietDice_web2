@@ -18,8 +18,11 @@ export default function Home() {
             </Link>
           </div>
           <div className="md:w-1/2 flex justify-center">
-            {/* Placeholder for hero image */}
-            <img src="/api/placeholder/400/300" alt="DietDice App" className="rounded-lg shadow-lg" />
+            <img 
+              src="/images/pexels-photo-1092730.jpeg" 
+              alt="DietDice App" 
+              className="rounded-lg shadow-lg border-4 border-white w-96 h-64 object-cover" 
+            />
           </div>
         </div>
       </section>

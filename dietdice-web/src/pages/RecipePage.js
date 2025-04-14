@@ -206,21 +206,6 @@ export default function RecipePage() {
                   {recipe.tag}
                 </span>
               </div>
-              {/* Action Buttons */}
-              <div className="absolute top-2 right-2 flex space-x-1">
-                  <button 
-                    onClick={(e) => handleEditRecipe(recipe)}
-                    className="bg-white p-1 rounded-full shadow-md hover:bg-gray-100"
-                  >
-                    <Edit size={16} className="text-green-600" />
-                  </button>
-                  <button 
-                    onClick={(e) => handleDeleteRecipe(recipe.id)}
-                    className="bg-white p-1 rounded-full shadow-md hover:bg-gray-100"
-                  >
-                    <Trash2 size={16} className="text-red-500" />
-                  </button>
-                </div>
             </div>
           ))}
         </div>

@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Plus, X, Trash2, Edit } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, X, Trash2, Edit, Upload } from 'lucide-react';
 import { 
     getAllRecipes, 
     addRecipe as addRecipeToDB, 
     updateRecipe as updateRecipeInDB,
     deleteRecipe as deleteRecipeFromDB 
   } from '../services/recipe-service';
+  import { uploadImageToS3 } from '../services/s3-service'; 
+
 
 
 export default function RecipePage() {
@@ -23,8 +25,11 @@ export default function RecipePage() {
     protein: 0,
     fat: 0,
     steps: '',
-    image: '/api/placeholder/400/250'
+    image: '/images/default-recipe.jpg',
+    imageKey: null
   });
+  const [selectedFile, setSelectedFile] = useState(null); 
+  const fileInputRef = useRef(null); 
 
   useEffect(() => {
     const fetchRecipes = async () => {
@@ -102,25 +107,111 @@ export default function RecipePage() {
     });
   };
 
+  // 文件选择处理器
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      // 创建临时URL以预览图片
+      const fileReader = new FileReader();
+      fileReader.onload = (e) => {
+        setNewRecipe({
+          ...newRecipe,
+          image: e.target.result,
+        });
+      };
+      fileReader.readAsDataURL(file);
+    }
+  };
 
   // 保存食谱（添加或更新）
   const handleSaveRecipe = async () => {
     try {
+      // 确保食谱有一个ID
+      const recipeId = newRecipe.id || Date.now().toString();
+      let imageKey = newRecipe.imageKey;
+      
+      // 如果有选择新的图片文件，上传到S3
+      if (selectedFile) {
+        imageKey = await uploadImageToS3(selectedFile, recipeId);
+      }
+      
+      const { image, ...recipeData } = newRecipe;
+
+      const recipeToSave = {
+        ...recipeData,
+        id: recipeId,
+        imageKey
+      };
+
+      console.log("Saving recipe with size:", JSON.stringify(recipeToSave).length, "bytes");
+
       if (isEditingRecipe) {
         // 更新现有食谱
-        const updatedRecipe = await updateRecipeInDB(newRecipe.id, newRecipe);
+        const updatedRecipe = await updateRecipeInDB(recipeToSave.id, recipeToSave);
         setRecipes(recipes.map(r => r.id === updatedRecipe.id ? updatedRecipe : r));
       } else {
         // 添加新食谱
-        const addedRecipe = await addRecipeToDB(newRecipe);
+        const addedRecipe = await addRecipeToDB(recipeToSave);
         setRecipes([...recipes, addedRecipe]);
       }
+      setSelectedFile(null);
       closeModal();
     } catch (err) {
       console.error("Failed to save recipe:", err);
       alert("保存食谱失败，请稍后再试");
     }
   };
+
+  // 图片上传UI部分 (替换现有的图片上传部分)
+  const renderImageUpload = () => (
+    <div className="mb-4">
+      <label className="block text-gray-700 font-medium mb-2">图片</label>
+      <div 
+        className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50"
+        onClick={() => fileInputRef.current.click()}
+      >
+        {newRecipe.image !== '/images/default-recipe.jpg' ? (
+          <div className="relative">
+            <img 
+              src={newRecipe.image} 
+              alt="Recipe preview" 
+              className="max-h-40 mx-auto rounded-md"
+            />
+            <p className="mt-2 text-sm text-gray-500">点击更换图片</p>
+          </div>
+        ) : (
+          <div className="py-4">
+            <Upload className="mx-auto h-12 w-12 text-gray-400" />
+            <p className="mt-2 text-sm text-gray-500">点击上传食谱图片</p>
+          </div>
+        )}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+          accept="image/*"
+          className="hidden"
+        />
+      </div>
+    </div>
+  );
+
+  // 在表单中替换现有的图片上传部分
+  // 将表单中的:
+  /*
+  <div className="mb-4">
+    <label className="block text-gray-700 font-medium mb-2">图片</label>
+    <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center">
+      <p className="text-gray-500">点击上传图片（功能尚未实现）</p>
+    </div>
+  </div>
+  */
+  // 替换为:
+  /*
+  {renderImageUpload()}
+  */
+
 
   // 查看食谱详情
   const viewRecipeDetails = (recipe) => {
@@ -315,12 +406,7 @@ export default function RecipePage() {
                     />
                   </div>
                   
-                  <div className="mb-4">
-                    <label className="block text-gray-700 font-medium mb-2">图片</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center">
-                      <p className="text-gray-500">点击上传图片（功能尚未实现）</p>
-                    </div>
-                  </div>
+                  {renderImageUpload()}
                   
                   <div className="flex justify-end">
                     <button
@@ -349,7 +435,7 @@ export default function RecipePage() {
                     />
                   </div>
                   
-                  <div className="mb-4">
+                  <div className="mb-4 flex items-center justify-between">
                     <span className="inline-block bg-green-100 text-green-600 rounded-full px-3 py-1 text-sm font-semibold">
                       {selectedRecipe.tag}
                     </span>

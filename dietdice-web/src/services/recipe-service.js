@@ -1,4 +1,3 @@
-// src/services/recipe-service.js
 import { 
     PutCommand, 
     GetCommand, 
@@ -7,7 +6,8 @@ import {
     DeleteCommand 
   } from "@aws-sdk/lib-dynamodb";
   import { docClient, TABLE_NAME } from "../config/aws-config";
-  
+  import { getImageUrl } from "./s3-service";
+
   // 获取所有食谱
   export const getAllRecipes = async () => {
     try {
@@ -16,7 +16,14 @@ import {
       });
       
       const response = await docClient.send(command);
-      return response.Items || [];
+      const items = response.Items || [];
+
+      const recipesWithImages = await Promise.all(items.map(async (recipe) => {
+        const imageUrl = await getImageUrl(recipe.imageKey);
+        return { ...recipe, image: imageUrl }
+      }))
+
+      return recipesWithImages;
     } catch (error) {
       console.error("Error fetching recipes:", error);
       throw error;
@@ -32,7 +39,13 @@ import {
       });
       
       const response = await docClient.send(command);
-      return response.Item;
+      const recipe = response.Item;
+
+      if (recipe) {
+        const imageUrl = await getImageUrl(recipe.imageKey);
+        return { ...recipe, image: imageUrl }
+      }
+      return null;
     } catch (error) {
       console.error(`Error fetching recipe with ID ${id}:`, error);
       throw error;

@@ -10,6 +10,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
+    <AuthProvider>
     <Router>
       <Routes>
         <Route path="/" element={<Layout />}>
@@ -24,13 +25,14 @@ function App() {
               <Recipes />
             </ProtectedRoute>
           } />
-          <Route path="login" element={<LoginPage />} />
-          <Route path="auth/callback" element={<AuthCallbackPage />} />
+          <Route path="login" element={<Login />} />
+          <Route path="auth/callback" element={<AuthCallback />} />
           <Route path="404" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Route>
       </Routes>
     </Router>
+    </AuthProvider>
   );
 }
 

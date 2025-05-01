@@ -23,5 +23,7 @@ export const BUCKET_NAME = "dietdice-recipe-images";
 
 // 表名
 export const TABLE_NAME = "DietDiceRecipes";
+export const USER_TABLE = "DietDiceUsers";
+export const TOKEN_TABLE = "DietDiceTokens";
 
 export { docClient, s3Client };

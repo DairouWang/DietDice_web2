@@ -1,9 +1,12 @@
 // src/components/Layout.js
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, Utensils, Dice5 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Home, Utensils, Dice5, LogIn, LogOut } from 'lucide-react';
 
 export default function Layout() {
+  const { authenticated, user, logout } = useAuth();
+
   return (
     <div className="min-h-screen bg-green-50 flex flex-col">
       {/* Header */}
@@ -41,6 +44,29 @@ export default function Layout() {
               <Dice5 size={20} className="mr-2" />
               搭配骰子
             </NavLink>
+
+            {authenticated ? (
+              <div className="flex items-center">
+                <span className="text-green-100 mr-4">{user?.name || '用户'}</span>
+                <button 
+                  onClick={logout}
+                  className="text-green-100 hover:text-white flex items-center"
+                >
+                  <LogOut size={20} className="mr-2" />
+                  退出
+                </button>
+              </div>
+            ) : (
+              <NavLink 
+                to="/login" 
+                className={({ isActive }) => 
+                  isActive ? "text-white font-bold flex items-center" : "text-green-100 hover:text-white flex items-center"
+                }
+              >
+                <LogIn size={20} className="mr-2" />
+                登录
+              </NavLink>
+            )}
           </nav>
         </div>
       </header>
@@ -52,7 +78,7 @@ export default function Layout() {
 
       {/* Bottom Navigation for Mobile */}
       <nav className="md:hidden bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 z-30">
-        <div className="grid grid-cols-3">
+        <div className="grid grid-cols-4">
           <NavLink 
             to="/" 
             className={({ isActive }) => 
@@ -87,6 +113,28 @@ export default function Layout() {
             <Dice5 size={24} />
             <span className="text-xs mt-1">搭配骰子</span>
           </NavLink>
+          
+          {authenticated ? (
+            <button 
+              onClick={logout}
+              className="flex flex-col items-center justify-center py-3 text-gray-500 hover:text-green-600"
+            >
+              <LogOut size={24} />
+              <span className="text-xs mt-1">退出</span>
+            </button>
+          ) : (
+            <NavLink 
+              to="/login" 
+              className={({ isActive }) => 
+                isActive 
+                  ? "flex flex-col items-center justify-center py-3 text-green-600" 
+                  : "flex flex-col items-center justify-center py-3 text-gray-500 hover:text-green-600"
+              }
+            >
+              <LogIn size={24} />
+              <span className="text-xs mt-1">登录</span>
+            </NavLink>
+          )}
         </div>
       </nav>
 

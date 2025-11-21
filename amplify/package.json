@@ -1,0 +1,10 @@
+{
+  "name": "amplify-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@aws-amplify/backend": "^1.0.0",
+    "@aws-amplify/backend-auth": "^1.0.0"
+  }
+}
+

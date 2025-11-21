@@ -1,24 +1,28 @@
 // src/services/auth-service.js
-import axios from 'axios';
+import { 
+  getCurrentUser, 
+  fetchUserAttributes,
+  fetchAuthSession,
+  signOut 
+} from 'aws-amplify/auth';
 import { 
   PutCommand, 
   GetCommand,
-  QueryCommand
 } from "@aws-sdk/lib-dynamodb";
-import { docClient, USER_TABLE, TOKEN_TABLE } from "../config/aws-config";
-import oauthConfig from '../config/oauth-config';
+import { docClient, USER_TABLE } from "../config/aws-config";
 
-// 存储用户信息
+// 存储用户信息到 DynamoDB
 export const storeUser = async (userData) => {
   try {
     const command = new PutCommand({
       TableName: USER_TABLE,
       Item: {
-        id: userData.sub || userData.id,
+        id: userData.userId || userData.username,
         email: userData.email,
-        name: userData.name,
-        picture: userData.picture,
-        createdAt: new Date().toISOString()
+        name: userData.name || userData.email?.split('@')[0] || 'User',
+        picture: userData.picture || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
     });
     
@@ -30,105 +34,73 @@ export const storeUser = async (userData) => {
   }
 };
 
-// 存储令牌
-export const storeTokens = async (userId, tokens) => {
-  try {
-    const command = new PutCommand({
-      TableName: TOKEN_TABLE,
-      Item: {
-        userId,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        id_token: tokens.id_token,
-        expires_at: Math.floor(Date.now() / 1000) + tokens.expires_in,
-        createdAt: new Date().toISOString()
-      }
-    });
-    
-    await docClient.send(command);
-    return true;
-  } catch (error) {
-    console.error("Error storing tokens:", error);
-    throw error;
-  }
-};
-
-// 获取用户的令牌
-export const getUserTokens = async (userId) => {
+// 从 DynamoDB 获取用户信息
+export const getUser = async (userId) => {
   try {
     const command = new GetCommand({
-      TableName: TOKEN_TABLE,
-      Key: { userId }
+      TableName: USER_TABLE,
+      Key: { id: userId }
     });
     
     const response = await docClient.send(command);
     return response.Item;
   } catch (error) {
-    console.error("Error getting user tokens:", error);
+    console.error("Error getting user:", error);
     throw error;
   }
 };
 
-// 交换授权码获取令牌
-export const exchangeCodeForTokens = async (code) => {
+// 获取当前认证用户信息
+export const getCurrentAuthUser = async () => {
   try {
-    const tokenResponse = await axios.post(oauthConfig.tokenEndpoint, {
-      grant_type: 'authorization_code',
-      code,
-      client_id: oauthConfig.clientId,
-      redirect_uri: oauthConfig.redirectUri
-    });
+    const user = await getCurrentUser();
+    const attributes = await fetchUserAttributes();
     
-    return tokenResponse.data;
+    return {
+      username: user.username,
+      userId: user.userId,
+      email: attributes.email,
+      name: attributes.name || attributes.email?.split('@')[0] || 'User',
+      picture: attributes.picture || null,
+    };
   } catch (error) {
-    console.error("Error exchanging code for tokens:", error);
+    console.error("Error getting current user:", error);
     throw error;
   }
 };
 
-// 使用令牌获取用户信息
-export const getUserInfo = async (accessToken) => {
+// 获取当前会话和令牌
+export const getCurrentSession = async () => {
   try {
-    const userInfoResponse = await axios.get(oauthConfig.userInfoEndpoint, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`
-      }
-    });
-    
-    return userInfoResponse.data;
+    const session = await fetchAuthSession();
+    return {
+      tokens: session.tokens,
+      credentials: session.credentials,
+      identityId: session.identityId,
+    };
   } catch (error) {
-    console.error("Error getting user info:", error);
-    throw error;
-  }
-};
-
-// 刷新访问令牌
-export const refreshAccessToken = async (refreshToken) => {
-  try {
-    const response = await axios.post(oauthConfig.tokenEndpoint, {
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      client_id: oauthConfig.clientId
-    });
-    
-    return response.data;
-  } catch (error) {
-    console.error("Error refreshing token:", error);
+    console.error("Error getting session:", error);
     throw error;
   }
 };
 
 // 检查用户是否已登录
-export const isAuthenticated = () => {
-  const tokens = JSON.parse(localStorage.getItem('auth_tokens'));
-  if (!tokens) return false;
-  
-  // 检查令牌是否过期
-  return tokens.expires_at > Math.floor(Date.now() / 1000);
+export const isAuthenticated = async () => {
+  try {
+    await getCurrentUser();
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 // 登出
-export const logout = () => {
-  localStorage.removeItem('auth_tokens');
-  localStorage.removeItem('user_info');
+export const logout = async () => {
+  try {
+    await signOut();
+    return true;
+  } catch (error) {
+    console.error("Error signing out:", error);
+    throw error;
+  }
 };

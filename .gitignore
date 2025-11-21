@@ -55,3 +55,11 @@ logs/
 dist/
 *.tsbuildinfo
 
+# Amplify
+amplify/node_modules
+amplify/.amplify-cookie
+.amplify/
+amplify_outputs.json
+src/amplify_outputs.json
+
+
